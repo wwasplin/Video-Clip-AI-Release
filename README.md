@@ -5,7 +5,23 @@ This repo contains pre-built deploy tarballs. Use them to install Video Clip AI 
 ## Get the tarball
 
 - Open the **releases/** folder in this repo.
-- Download **`video-clip-ai_<version>_obfuscated.tar.gz`** (e.g. via clone, or from the GitHub UI).
+- Download **`video-clip-ai_<version>_obfuscated.tar.gz`** (use the version that exists in releases/, e.g. `video-clip-ai_2.0.1_obfuscated.tar.gz`).
+
+## System dependencies (install before running install.sh)
+
+On Ubuntu/Debian, install these so the backend venv and dependencies (e.g. sentencepiece) build correctly:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y postgresql postgresql-contrib ffmpeg nodejs npm \
+  python3-venv python3-dev pkg-config cmake build-essential
+```
+
+For the **obfuscated tarball**, Python 3.10 is recommended. On Ubuntu 24.04 (default Python 3.12), install 3.10 so the install script can use it for the backend venv:
+
+```bash
+sudo apt-get install -y python3.10 python3.10-venv python3.10-dev
+```
 
 ## Deploy on the server
 
@@ -15,7 +31,7 @@ This repo contains pre-built deploy tarballs. Use them to install Video Clip AI 
 
    ```bash
    sudo mkdir -p /opt/video-clip-ai
-   sudo tar -xzf video-clip-ai_1.0.0_obfuscated.tar.gz -C /opt/video-clip-ai
+   sudo tar -xzf video-clip-ai_2.0.1_obfuscated.tar.gz -C /opt/video-clip-ai
    ```
 
 3. **Run the install script** (creates Python venv, installs dependencies, creates `.env`, optional systemd):
@@ -49,10 +65,16 @@ This repo contains pre-built deploy tarballs. Use them to install Video Clip AI 
 
 ## Requirements on the server
 
-- Linux (e.g. Ubuntu/Debian)
-- Python 3.10+
-- PostgreSQL
-- FFmpeg
-- Node.js and npm (only for running `npx serve` for the frontend; the frontend is pre-built, no build step)
+- **Ubuntu 22.04 or 24.04 LTS (x86_64)** – The obfuscated tarball is built in Ubuntu 22.04 for compatibility with current LTS releases.
+- **Python 3.10+** with venv and dev headers (see **System dependencies** above). The PyArmor runtime in the tarball targets Python 3.10; use `python3.10` (or your default 3.10+) when the install script creates the backend venv.
+- PostgreSQL, FFmpeg, Node.js and npm (for `npx serve`; frontend is pre-built).
 
-No need to build the frontend or run PyArmor on the server; the tarball contains the built UI and the backend.
+No need to build the frontend or run PyArmor on the server; the tarball contains the built UI and the obfuscated backend.
+
+## Troubleshooting
+
+- **Backend crashes with SIGSEGV (segmentation fault)**  
+  The obfuscated tarball is built for Ubuntu 22.04/24.04 LTS (x86_64) with Python 3.10. If the backend still segfaults (e.g. different distro or architecture), use a **non-obfuscated** tarball if published in **releases/**, or build from source: clone [Video-Clip-AI](https://github.com/wwasplin/video-clip-ai), run `./packaging/build-deploy.sh --no-obfuscate`, then copy `build/deploy/` to the server and run `./install.sh`.
+
+- **"No license text available"**  
+  The setup page shows this when the backend is not reachable (e.g. backend crashed or not started). Fix the backend (see above) and ensure it is running on port 3030.
