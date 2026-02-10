@@ -1,50 +1,58 @@
-# Deploy build (no .deb)
+# Video Clip AI – Deploy from tarball
 
-You can ship an obfuscated or plain backend without building a Debian package.
+This repo contains pre-built deploy tarballs. Use them to install Video Clip AI on a server without building from source.
 
-## Build a deploy tree
+## Get the tarball
 
-From the project root:
+- Open the **releases/** folder in this repo.
+- Download **`video-clip-ai_<version>_obfuscated.tar.gz`** (e.g. via clone, or from the GitHub UI).
 
-```bash
-# Obfuscated backend (default) – requires PyArmor: pip install pyarmor
-./packaging/build-deploy.sh
+## Deploy on the server
 
-# Plain backend (e.g. to avoid PyArmor SEGV on some servers)
-./packaging/build-deploy.sh --no-obfuscate
-```
+1. **Copy the tarball to the server** (e.g. with `scp` or download directly on the server).
 
-Output is **`build/deploy/`** with:
-
-- **backend/** – Python app (obfuscated or plain) + `requirements.txt`
-- **frontend/dist/** – built static UI
-- **.env.example**, **scripts/**, **systemd/** (production units), **install.sh**
-
-## Deploy to a server
-
-1. Copy the tree to the server (e.g. `/opt/video-clip-ai`):
+2. **Extract** to the install directory (e.g. `/opt/video-clip-ai`):
 
    ```bash
-   rsync -avz build/deploy/ user@server:/opt/video-clip-ai/
+   sudo mkdir -p /opt/video-clip-ai
+   sudo tar -xzf video-clip-ai_1.0.0_obfuscated.tar.gz -C /opt/video-clip-ai
    ```
 
-2. On the server, run the install script (creates venv, .env, optional systemd):
+3. **Run the install script** (creates Python venv, installs dependencies, creates `.env`, optional systemd):
 
    ```bash
-   ssh user@server 'cd /opt/video-clip-ai && ./install.sh'
+   cd /opt/video-clip-ai
+   sudo ./install.sh
    ```
 
-3. Edit `/opt/video-clip-ai/.env` for PostgreSQL and other settings, then start services if you enabled systemd.
+   When prompted, choose whether to install systemd services for autostart. The script will create `.env` from `.env.example`; you must configure it before the app can use the database.
 
-No Node/npm is required on the server; the frontend is pre-built and served with `npx serve` from `frontend/dist`.
+4. **Edit `.env`** with your settings:
 
-## Push obfuscated build to release GitHub repo
+   - **POSTGRES_PASSWORD** – password for the PostgreSQL user (e.g. `clipai`).
+   - **POSTGRES_HOST** – usually `localhost` if PostgreSQL is on the same machine.
+   - Create the database and user if needed, for example:
 
-From the project root, build the obfuscated deploy tree and push a tarball to the release repo:
+     ```bash
+     sudo -u postgres psql -c "CREATE USER clipai WITH PASSWORD 'your-password';"
+     sudo -u postgres psql -c "CREATE DATABASE video_clip_ai OWNER clipai;"
+     sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE video_clip_ai TO clipai;"
+     ```
 
-```bash
-./packaging/push-release.sh [version]
-# default version 1.0.0; override with RELEASE_REPO=... if using an SSH host alias
-```
+5. **Start the services** (if you installed systemd):
 
-This runs `build-deploy.sh`, creates `build/video-clip-ai_<version>_obfuscated.tar.gz`, then clones/updates the release repo, copies the tarball into `releases/`, and pushes. Users can clone the release repo and download the tarball, then extract and run `./install.sh` on the server.
+   ```bash
+   sudo systemctl start video-clip-ai-backend video-clip-ai-frontend
+   ```
+
+6. **Open the app** in a browser at **http://\<server-ip\>:3020** and complete first-run setup (license, admin account).
+
+## Requirements on the server
+
+- Linux (e.g. Ubuntu/Debian)
+- Python 3.10+
+- PostgreSQL
+- FFmpeg
+- Node.js and npm (only for running `npx serve` for the frontend; the frontend is pre-built, no build step)
+
+No need to build the frontend or run PyArmor on the server; the tarball contains the built UI and the backend.
